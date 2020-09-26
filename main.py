@@ -24,20 +24,24 @@ async def fetch_current():
         results = soup.find_all(class_='columns')
 
         for result in results:
-            if isinstance(result, element.Tag):
-                if result.find('p', class_="has-text-success") is not None:
+            try:
+                if isinstance(result, element.Tag):
+                    if result.find('p', class_="has-text-success") is not None:
 
-                    time = result.find(
-                        'p', class_="has-text-light").text.strip()
-                    try:
-                        if ("second" in time) or ("minute" in time and int(time.split()[0]) < 5) or ("now" in time):
-                            name = result.find(
-                                'p', class_="has-text-warning").text.strip()
+                        time = result.find(
+                            'p', class_="has-text-light").text.strip()
+                        try:
+                            if ("second" in time) or ("minute" in time and int(time.split()[0]) < 5) or ("now" in time):
+                                name = result.find(
+                                    'p', class_="has-text-warning").text.strip()
 
-                            urls_dict[name] = f'http://departures.to{result.find_parent("a")["href"]}'
-                            current_apps.append(name)
-                    except ValueError:
-                        pass
+                                urls_dict[name] = f'http://departures.to{result.find_parent("a")["href"]}'
+                                current_apps.append(name)
+                        except ValueError:
+                            pass
+            except Exception as e:
+                print("Error in main()")
+                print(e)
 
     return current_apps
 
@@ -47,14 +51,19 @@ async def main():
     print(data_old)
 
     while True:
-        data_now = await fetch_current()
-        diff = list(set(data_now) - set(data_old))
-        for app in diff:
-            async with aiohttp.ClientSession(json_serialize=ujson.dumps) as session:
-                await session.post(WEBHOOK_URL, json={'username': 'Departures.To', 'avatar_url': 'https://miro.medium.com/max/384/1*zW1AZEwt3xklS7HZcmm2sg.png', 'content': f'{app} just had a TestFlight spot open up! {urls_dict[app]}'})
-            print("NEW", app + urls_dict[app])
-        data_old = data_now
-        await asyncio.sleep(10)
+        try:
+            data_now = await fetch_current()
+            diff = list(set(data_now) - set(data_old))
+            for app in diff:
+                async with aiohttp.ClientSession(json_serialize=ujson.dumps) as session:
+                    await session.post(WEBHOOK_URL, json={'username': 'Departures.To', 'avatar_url': 'https://miro.medium.com/max/384/1*zW1AZEwt3xklS7HZcmm2sg.png', 'content': f'{app} just had a TestFlight spot open up! {urls_dict[app]}'})
+                print("NEW", app + urls_dict[app])
+            data_old = data_now
+        except Exception as e:
+            print("Error in POST")
+            print(e)
+        finally:
+            await asyncio.sleep(60)
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
