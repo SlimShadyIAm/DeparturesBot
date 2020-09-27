@@ -9,6 +9,8 @@ URL = 'https://departures.to/'
 WEBHOOK_URL = environ.get("TESTFLIGHT")
 data_old = []
 urls_dict = {}
+blacklist = ["Transparent App Icons", "Dark Noise", "Aloha Browser"]
+seen = []
 
 
 async def fetch(session, url):
@@ -35,7 +37,7 @@ async def fetch_current():
                                 name = result.find(
                                     'p', class_="has-text-warning").text.strip()
 
-                                urls_dict[name] = f'http://departures.to{result.find_parent("a")["href"]}'
+                                urls_dict[name] = f'https://departures.to{result.find_parent("a")["href"]}'
                                 current_apps.append(name)
                         except ValueError:
                             pass
@@ -55,15 +57,26 @@ async def main():
             data_now = await fetch_current()
             diff = list(set(data_now) - set(data_old))
             for app in diff:
-                async with aiohttp.ClientSession(json_serialize=ujson.dumps) as session:
-                    await session.post(WEBHOOK_URL, json={'username': 'Departures.To', 'avatar_url': 'https://miro.medium.com/max/384/1*zW1AZEwt3xklS7HZcmm2sg.png', 'content': f'{app} just had a TestFlight spot open up! {urls_dict[app]}'})
-                print("NEW", app + urls_dict[app])
+                if app not in blacklist and app not in seen:
+                    seen.append(app)
+                    async with aiohttp.ClientSession(json_serialize=ujson.dumps) as session:
+                        await session.post(WEBHOOK_URL, json={'username': 'Departures.To', 'avatar_url': 'https://miro.medium.com/max/384/1*zW1AZEwt3xklS7HZcmm2sg.png', 'content': f'{app} just had a TestFlight spot open up! {urls_dict[app]}'})
+                    asyncio.create_task(remove_seen(app))
+                    print("NEW", app + urls_dict[app])
             data_old = data_now
         except Exception as e:
             print("Error in POST")
             print(e)
         finally:
             await asyncio.sleep(60)
+
+
+async def remove_seen(item):
+    await asyncio.sleep(360)
+    print("removing", item)
+    if item in seen:
+        seen.remove(item)
+
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
