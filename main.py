@@ -9,7 +9,7 @@ URL = 'https://departures.to/'
 WEBHOOK_URL = environ.get("TESTFLIGHT")
 data_old = []
 urls_dict = {}
-blacklist = ["Transparent App Icons", "Dark Noise", "Aloha Browser"]
+blacklist = ["Transparent App Icons", "Dark Noise", "Aloha Browser", "The New York Times"]
 seen = []
 
 
